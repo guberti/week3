@@ -3,6 +3,13 @@ defmodule Mastermind do
   @moduledoc """
   We represent a game of Mastermind as it is played by our client.
 
+  The client first calls `new_game`, which returns an opaque identifier for the
+  game in play.
+
+  The client then calls `make_guess` to submit a guess and have it scored, and
+  `status` to return an external view of the game status. This status contains
+  the board geometry along with a full history of guesses and their scores.
+
   ### Internal Representation
 
   Colors are represented as positive integers, `1..@colors`.
@@ -54,31 +61,23 @@ defmodule Mastermind do
   end
 
   def new_game(target) do
-    spawn fn -> receive_guess(
-      %Mastermind.State{
-        target: target,
-        width: @width,
-        colors: @colors,
-        turns_left: @max_turns
-      }) end
+    %Mastermind.State{
+      target: target,
+      width: @width,
+      colors: @colors,
+      turns_left: @max_turns
+    }
   end
 
-  def receive_guess(game) do
-    receive do
-      {guess, sender} ->
-        move = %Mastermind.State.Move
-          {guess: guess, score: score_guess(guess, game.target)}
+  def make_guess(game, guess) when is_list(guess) do
+    move = %Mastermind.State.Move
+      {guess: guess, score: score_guess(guess, game.target)}
 
-        updated = %{ game |
-          turns_left: game.turns_left - 1,
-          moves: [move | game.moves],
-          won: guess == game.target
-        }
-
-        send sender, updated
-
-        receive_guess(updated)
-      end
+    %{ game |
+      turns_left: game.turns_left - 1,
+      moves: [move | game.moves],
+      won: guess == game.target
+    }
   end
 
 
